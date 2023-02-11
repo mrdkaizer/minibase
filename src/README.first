@@ -1,0 +1,12 @@
+
+Please copy all the following files into your own directory.
+
+Makefile: a sample makefile to compile your project,
+	  (suppose the file to implement class BufMgr is named as buf.C)
+
+buf.h : specifications for the class BufMgr
+
+main.C, test_driver.C, BMTester.C: the testing programs
+
+ErrProc.sample: a sample program to help you use the error protocol.
+

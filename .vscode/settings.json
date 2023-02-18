@@ -1,6 +1,15 @@
 {
     "files.associations": {
-        "BMTester.C": "cpp"
+        "BMTester.C": "cpp",
+        "buf.C": "cpp",
+        "new": "cpp",
+        "ostream": "cpp",
+        "iostream": "cpp",
+        "db.C": "cpp",
+        "test_driver.C": "cpp",
+        "system_defs.C": "cpp",
+        "new_error.C": "cpp",
+        "list": "cpp"
     },
     "C_Cpp.errorSquiggles": "disabled"
 }

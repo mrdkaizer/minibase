@@ -8,7 +8,7 @@
 
 #include "db.h"
 #include "page.h"
-
+#include<list>
 
 #define NUMBUF 20   
 // Default number of frames, artifically small number for ease of debugging.
@@ -17,11 +17,23 @@
 // Hash Table size
 
 
+class Descriptor {
+public:
+    PageId page_number = INVALID_PAGE;
+    int pin_count = 0;
+    bool dirtybit = false;
+};
+
 
 /*******************ALL BELOW are purely local to buffer Manager********/
 
 // You should create enums for internal errors in the buffer manager.
-enum bufErrCodes  { 
+enum bufErrCodes  {
+    PAGE_NOT_FOUND,
+    PIN_NUMBER_ERROR,
+    BUFFER_FULL_ERROR,
+    PINNED_PAGE_FREE_ERROR,
+    CANDIDATE_REMOVAL_ERROR
 };
 
 class Replacer;
@@ -29,6 +41,12 @@ class Replacer;
 class BufMgr {
 
 private: // fill in this area
+    Descriptor* bufDesc;
+    int bufferSize;
+    
+    list<PageId> frameIndexer;
+    list<int> loved;
+    list<int> hated;
 
 public:
 
@@ -41,6 +59,12 @@ public:
 	// representing one of several buffer pool replacement schemes.
 
     ~BufMgr();           // Flush all valid dirty pages to disk
+
+    PageId findEmptyPos();
+
+    PageId findPage(PageId pageId);
+
+    int findReplacePos();
 
     Status pinPage(PageId PageId_in_a_DB, Page*& page, int emptyPage=0);
         // Check if this page is in buffer pool, otherwise
@@ -78,6 +102,8 @@ public:
     {
       return unpinPage(globalPageId_in_a_DB, dirty, FALSE);
     }
+
+    Status removeFromCandidate(int pagePos);
 };
 
 #endif

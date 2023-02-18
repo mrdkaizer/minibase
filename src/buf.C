@@ -53,10 +53,10 @@ int BufMgr::findReplacePos() {
     hated.pop_back();
   }
   else if(!loved.empty()){
-    for(auto iter = loved.begin(); iter!=loved.end(); ++iter) {
-      if(bufDesc[*iter].pin_count == 0){
-        loved.erase(iter);
-        replacePos = *iter;
+    for(auto page = loved.begin(); page!=loved.end(); ++page) {
+      if(bufDesc[*page].pin_count == 0){
+        loved.erase(page);
+        replacePos = *page;
         break;
       }
     }
@@ -91,7 +91,7 @@ Status BufMgr::pinPage(PageId PageId_in_a_DB, Page*& page, int emptyPage) {
     if(status!=OK){
       return MINIBASE_CHAIN_ERROR(BUFMGR, status);
     }
-        bufDesc[firstEmptyPos].dirtybit = FALSE;
+    bufDesc[firstEmptyPos].dirtybit = FALSE;
     bufDesc[firstEmptyPos].page_number = PageId_in_a_DB;
     bufDesc[firstEmptyPos].pin_count = 1;
 
@@ -222,16 +222,16 @@ Status BufMgr::flushAllPages(){
 }
 
 Status BufMgr::removeFromCandidate(int pagePos) {
-  for(auto iter = loved.begin();iter!=loved.end();++iter){
-    if(*iter==pagePos){
-      loved.erase(iter);
+  for(auto page = loved.begin();page!=loved.end();++page){
+    if(*page==pagePos){
+      loved.erase(page);
       return OK;
     }
   }
 
-  for(auto iter = hated.begin();iter!=hated.end();++iter){
-    if(*iter==pagePos){
-      hated.erase(iter);
+  for(auto page = hated.begin();page!=hated.end();++page){
+    if(*page==pagePos){
+      hated.erase(page);
       return OK;
     }
   }

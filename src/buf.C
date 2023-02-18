@@ -14,20 +14,21 @@ static const char* bufErrMsgs[] = {
   "Page does not exists",
   "Pin count error",
   "Bufferpool is full",
-  "You are trying to free a pinned page",
-  "Cannot remove page from candidates"
+  "You are trying to free a pinned page"
 };
 
 // Create a static "error_string_table" object and register the error messages
 // with minibase system 
 static error_string_table bufTable(BUFMGR,bufErrMsgs);
 
+// CONSTRUCTOR
 BufMgr::BufMgr (int numbuf, Replacer *replacer) {
   bufferSize = numbuf;
   bufPool = new Page[bufferSize];
   bufDesc = new Descriptor[bufferSize];
 }
 
+// Returns an empty positions if exists in bufDesc
 PageId BufMgr::findEmptyPos() {
   for (int i=0; i<bufferSize; i++) {
     if (bufDesc[i].page_number == INVALID_PAGE) {
@@ -37,6 +38,7 @@ PageId BufMgr::findEmptyPos() {
   return INVALID_PAGE;
 }
 
+// Return the position of a page in the bufDesc if exists.
 PageId BufMgr::findPage(PageId pageId) {
   for (int i=0; i<bufferSize; i++) {
     if (bufDesc[i].page_number == pageId) {
@@ -46,6 +48,7 @@ PageId BufMgr::findPage(PageId pageId) {
   return INVALID_PAGE;
 }
 
+// Find a page by a given status, used to help with replacement policy
 PageId BufMgr::findFirstPageByStatus(int status) {
   int time;
   PageId page = INVALID_PAGE;
@@ -62,6 +65,8 @@ PageId BufMgr::findFirstPageByStatus(int status) {
   return page;
 }
 
+// get the replacement page: 
+// order 1 - MRU hated, 2 - LRU LOVED
 int BufMgr::findReplacePos() {
   int firstHated = findFirstPageByStatus(HATED);
   int firstLoved = findFirstPageByStatus(LOVED);
@@ -103,7 +108,7 @@ Status BufMgr::pinPage(PageId PageId_in_a_DB, Page*& page, int emptyPage) {
     int replacePos = findReplacePos();
 
     if (replacePos == INVALID_PAGE) {
-      return MINIBASE_FIRST_ERROR(BUFMGR, BUFFER_FULL_ERROR);
+      return MINIBASE_FIRST_ERROR(BUFMGR, MEMERR);
     }
 
     if (bufDesc[replacePos].dirtybit == TRUE) {
@@ -133,7 +138,7 @@ Status BufMgr::newPage(PageId& firstPageId, Page*& firstpage, int howmany) {
     if(status!=OK){
       return MINIBASE_CHAIN_ERROR(BUFMGR, status);
     } 
-    return MINIBASE_FIRST_ERROR(BUFMGR, BUFFER_FULL_ERROR);
+    return MINIBASE_FIRST_ERROR(BUFMGR, MEMERR);
   }
   return OK;
 }
@@ -170,10 +175,10 @@ Status BufMgr::unpinPage(PageId page_num, int dirty=FALSE, int hate = FALSE) {
   int pageIndex = findPage(page_num);
 
   if(pageIndex == INVALID_PAGE) {
-    return MINIBASE_FIRST_ERROR(BUFMGR, PAGE_NOT_FOUND);
+    return MINIBASE_FIRST_ERROR(BUFMGR, PAGENOTFOUNDERR);
   }
   if(bufDesc[pageIndex].pin_count<=0) {
-    return MINIBASE_FIRST_ERROR(BUFMGR, PIN_NUMBER_ERROR);
+    return MINIBASE_FIRST_ERROR(BUFMGR, PINCOUNTERR);
   }
   if(bufDesc[pageIndex].pin_count==1) {
     if(hate){
@@ -204,12 +209,11 @@ Status BufMgr::freePage(PageId globalPageId){
     bufDesc[pagePos].pin_count = 0;
     bufDesc[pagePos].status = UKNOWN;
 
-    // status = removeFromCandidate(pagePos);
     if (status!=OK) {
       return status;
     }
   } else {
-    return MINIBASE_FIRST_ERROR(BUFMGR, PINNED_PAGE_FREE_ERROR);
+    return MINIBASE_FIRST_ERROR(BUFMGR, FREEPINPAGEERR);
   }
 
   status = MINIBASE_DB->deallocate_page(globalPageId);

@@ -27,9 +27,8 @@ public:
     PageId page_number = INVALID_PAGE;
     int pin_count = 0;
     bool dirtybit = false;
-    int status = UKNOWN; // 0 uknown, 1 loved, 2 hated
+    int status = UKNOWN; // ENUM: 0 uknown, 1 loved, 2 hated
     int timestamp = 0;
-    
 };
 
 
@@ -37,11 +36,10 @@ public:
 
 // You should create enums for internal errors in the buffer manager.
 enum bufErrCodes  {
-    PAGE_NOT_FOUND,
-    PIN_NUMBER_ERROR,
-    BUFFER_FULL_ERROR,
-    PINNED_PAGE_FREE_ERROR,
-    CANDIDATE_REMOVAL_ERROR
+    PAGENOTFOUNDERR,
+    PINCOUNTERR,
+    MEMERR,
+    FREEPINPAGEERR
 };
 
 class Replacer;
@@ -110,7 +108,6 @@ public:
       return unpinPage(globalPageId_in_a_DB, dirty, FALSE);
     }
 
-    // Status removeFromCandidate(int pagePos);
 };
 
 #endif

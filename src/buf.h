@@ -29,11 +29,11 @@ public:
 
 // You should create enums for internal errors in the buffer manager.
 enum bufErrCodes  {
-    PAGE_NOT_FOUND,
     PIN_NUMBER_ERROR,
-    BUFFER_FULL_ERROR,
     PINNED_PAGE_FREE_ERROR,
-    CANDIDATE_REMOVAL_ERROR
+    BUFFER_FULL_ERROR,
+    CANDIDATE_REMOVAL_ERROR,
+    PAGE_NOT_FOUND,
 };
 
 class Replacer;
@@ -59,12 +59,6 @@ public:
 	// representing one of several buffer pool replacement schemes.
 
     ~BufMgr();           // Flush all valid dirty pages to disk
-
-    PageId findEmptyPos();
-
-    PageId findPage(PageId pageId);
-
-    int findReplacePos();
 
     Status pinPage(PageId PageId_in_a_DB, Page*& page, int emptyPage=0);
         // Check if this page is in buffer pool, otherwise
@@ -102,8 +96,6 @@ public:
     {
       return unpinPage(globalPageId_in_a_DB, dirty, FALSE);
     }
-
-    Status removeFromCandidate(int pagePos);
 };
 
 #endif

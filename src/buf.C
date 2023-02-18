@@ -11,11 +11,11 @@
 
 // Define error message here
 static const char* bufErrMsgs[] = { 
-  "Page does not exists",
-  "Pin count error",
-  "Bufferpool is full",
-  "You are trying to free a pinned page",
-  "Cannot remove page from candidates"
+  "Sfalma sto pin...",
+  "Prospathiseis na epeleutherosis selida pinned",
+  "Gematos Buffer",
+  "Den mpori na diagrafi i selida",
+  "H selida den vrethike",
 };
 
 // Create a static "error_string_table" object and register the error messages
@@ -28,89 +28,76 @@ BufMgr::BufMgr (int numbuf, Replacer *replacer) {
   bufDesc = new Descriptor[bufferSize];
 }
 
-PageId BufMgr::findEmptyPos() {
-  for (int i=0; i<bufferSize; i++) {
-    if (bufDesc[i].page_number == INVALID_PAGE) {
-      return i;
-    }
-  }
-  return INVALID_PAGE;
-}
-
-PageId BufMgr::findPage(PageId pageId) {
-  for (int i=0; i<bufferSize; i++) {
-    if (bufDesc[i].page_number == pageId) {
-      return i;
-    }
-  }
-  return INVALID_PAGE;
-}
-
-int BufMgr::findReplacePos() {
-  int replacePos = INVALID_PAGE;
-  if(!hated.empty()){
-    replacePos = hated.back();
-    hated.pop_back();
-  }
-  else if(!loved.empty()){
-    for(auto page = loved.begin(); page!=loved.end(); ++page) {
-      if(bufDesc[*page].pin_count == 0){
-        loved.erase(page);
-        replacePos = *page;
-        break;
-      }
-    }
-  }
-
-  return replacePos;
-}
 
 Status BufMgr::pinPage(PageId PageId_in_a_DB, Page*& page, int emptyPage) {
-  int firstEmptyPos = findEmptyPos();
-  int pageIndex = findPage(PageId_in_a_DB);
+  int empty_no = INVALID_PAGE;
+  int page_no = INVALID_PAGE;
 
-  for (int i=0; i<bufferSize; i++) {
-    if (firstEmptyPos == INVALID_PAGE && bufDesc[i].page_number == INVALID_PAGE) {
-      firstEmptyPos = i;
+  for (int i=0; i<bufferSize; i++){
+    if (bufDesc[i].page_number == PageId_in_a_DB) {
+      page_no = i;
+    }
+  }
+
+  for (int i=0; i<bufferSize; i++){
+    if (bufDesc[i].page_number == INVALID_PAGE) {
+      empty_no = i;
+    }
+  }
+
+  for (int i=0; i<bufferSize; i++){
+    if (empty_no == INVALID_PAGE && bufDesc[i].page_number == INVALID_PAGE) {
+      empty_no = i;
     }
 
     if (bufDesc[i].page_number == PageId_in_a_DB) {
-      pageIndex = i;
+      page_no = i;
     }
   }
 
-  if (pageIndex != INVALID_PAGE) {
-    page = bufPool+pageIndex;
+  if (page_no != INVALID_PAGE){
+    page = bufPool+page_no;
 
-    bufDesc[pageIndex].pin_count++;
-  } else if (firstEmptyPos != INVALID_PAGE){
+    bufDesc[page_no].pin_count++;
+  } else if (empty_no != INVALID_PAGE){
 
-    page = bufPool+firstEmptyPos;
+    page = bufPool+empty_no;
 
     Status status = MINIBASE_DB->read_page(PageId_in_a_DB,page);
     if(status!=OK){
       return MINIBASE_CHAIN_ERROR(BUFMGR, status);
     }
-    bufDesc[firstEmptyPos].dirtybit = FALSE;
-    bufDesc[firstEmptyPos].page_number = PageId_in_a_DB;
-    bufDesc[firstEmptyPos].pin_count = 1;
+    bufDesc[empty_no].dirtybit = FALSE;
+    bufDesc[empty_no].page_number = PageId_in_a_DB;
+    bufDesc[empty_no].pin_count = 1;
 
   } else {
-    int replacePos = findReplacePos();
+    int page_no = INVALID_PAGE;
+    if(!hated.empty()){
+      page_no = hated.back();
+      hated.pop_back();
+    }
+    else if(!loved.empty()){
+      for(auto page = loved.begin(); page!=loved.end(); ++page) {
+        if(bufDesc[*page].pin_count == 0){
+          loved.erase(page);
+          page_no = *page;
+          break;
+        }
+      }
+    }
 
-    if (replacePos == INVALID_PAGE) {
+    if (page_no == INVALID_PAGE) {
       return MINIBASE_FIRST_ERROR(BUFMGR, BUFFER_FULL_ERROR);
     }
 
-    if (bufDesc[replacePos].dirtybit == TRUE) {
-      MINIBASE_DB->write_page(bufDesc[replacePos].page_number, bufPool+replacePos);
-    }
+    flushPage(bufDesc[page_no].page_number);
 
-    bufDesc[replacePos].dirtybit = FALSE;
-    bufDesc[replacePos].page_number = PageId_in_a_DB;
-    bufDesc[replacePos].pin_count = 1;
+    bufDesc[page_no].dirtybit = FALSE;
+    bufDesc[page_no].page_number = PageId_in_a_DB;
+    bufDesc[page_no].pin_count = 1;
 
-    page = bufPool+replacePos;
+    page = bufPool+page_no;
 
     MINIBASE_DB->read_page(PageId_in_a_DB, page);
   }
@@ -136,10 +123,15 @@ Status BufMgr::newPage(PageId& firstPageId, Page*& firstpage, int howmany) {
 
 Status BufMgr::flushPage(PageId pageid) {
   // put your code here
-  int pageIndex = findPage(pageid);
+  PageId page_no = INVALID_PAGE;
+  for (int i=0; i<bufferSize; i++) {
+    if (bufDesc[i].page_number == pageid) {
+      page_no = i;
+    }
+  }
 
-  if(pageIndex!=INVALID_PAGE && bufDesc[pageIndex].dirtybit){
-    Status write_status = MINIBASE_DB->write_page(pageid, bufPool+pageIndex);
+  if(page_no!=INVALID_PAGE && bufDesc[page_no].dirtybit){
+    Status write_status = MINIBASE_DB->write_page(pageid, bufPool+page_no);
     if(write_status!=OK){
       return MINIBASE_FIRST_ERROR(BUFMGR,write_status);
     }
@@ -163,24 +155,29 @@ BufMgr::~BufMgr(){
 //************************************************************
 
 Status BufMgr::unpinPage(PageId page_num, int dirty=FALSE, int hate = FALSE) {
-  int pageIndex = findPage(page_num);
+  PageId page_no = INVALID_PAGE;
+  for (int i=0; i<bufferSize; i++) {
+    if (bufDesc[i].page_number == page_num) {
+      page_no = i;
+    }
+  }
 
-  if(pageIndex == INVALID_PAGE) {
+  if(page_no == INVALID_PAGE) {
     return MINIBASE_FIRST_ERROR(BUFMGR, PAGE_NOT_FOUND);
   }
-  if(bufDesc[pageIndex].pin_count<=0) {
+  if(bufDesc[page_no].pin_count<=0) {
     return MINIBASE_FIRST_ERROR(BUFMGR, PIN_NUMBER_ERROR);
   }
-  if(bufDesc[pageIndex].pin_count==1) {
+  if(bufDesc[page_no].pin_count==1) {
     if(hate){
-      hated.push_back(pageIndex);
+      hated.push_back(page_no);
     }
     else{
-      loved.push_back(pageIndex);
+      loved.push_back(page_no);
     }
   }
-  bufDesc[pageIndex].pin_count--;
-  bufDesc[pageIndex].dirtybit = dirty;
+  bufDesc[page_no].pin_count--;
+  bufDesc[page_no].dirtybit = dirty;
 
   return OK;
 }
@@ -191,15 +188,35 @@ Status BufMgr::unpinPage(PageId page_num, int dirty=FALSE, int hate = FALSE) {
 
 Status BufMgr::freePage(PageId globalPageId){
   Status status=OK;
-  int pagePos = findPage(globalPageId);
-  if(pagePos!=INVALID_PAGE && bufDesc[pagePos].pin_count==0) {
-    bufDesc[pagePos].dirtybit = false;
-    bufDesc[pagePos].page_number = INVALID_PAGE;
-    bufDesc[pagePos].pin_count = 0;
+  PageId page_no = INVALID_PAGE;
+  for (int i=0; i<bufferSize; i++) {
+    if (bufDesc[i].page_number == globalPageId) {
+      page_no = i;
+    }
+  }
+  if(page_no!=INVALID_PAGE && bufDesc[page_no].pin_count==0) {
+    bufDesc[page_no].dirtybit = false;
+    bufDesc[page_no].page_number = INVALID_PAGE;
+    bufDesc[page_no].pin_count = 0;
 
-    status = removeFromCandidate(pagePos);
+    for(auto page = loved.begin();page!=loved.end();++page){
+      if(*page==page_no){
+        loved.erase(page);
+        status = OK;
+        break;
+      }
+    }
+
+    for(auto page = hated.begin();page!=hated.end();++page){
+      if(*page==page_no){
+        hated.erase(page);
+        status = OK;
+        break;
+      }
+    }
+
     if (status!=OK) {
-      return status;
+     return MINIBASE_FIRST_ERROR(BUFMGR, CANDIDATE_REMOVAL_ERROR);
     }
   } else {
     return MINIBASE_FIRST_ERROR(BUFMGR, PINNED_PAGE_FREE_ERROR);
@@ -219,22 +236,4 @@ Status BufMgr::flushAllPages(){
     }
   }
   return OK;
-}
-
-Status BufMgr::removeFromCandidate(int pagePos) {
-  for(auto page = loved.begin();page!=loved.end();++page){
-    if(*page==pagePos){
-      loved.erase(page);
-      return OK;
-    }
-  }
-
-  for(auto page = hated.begin();page!=hated.end();++page){
-    if(*page==pagePos){
-      hated.erase(page);
-      return OK;
-    }
-  }
-
-  return MINIBASE_FIRST_ERROR(BUFMGR, CANDIDATE_REMOVAL_ERROR);
 }

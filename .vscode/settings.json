@@ -9,7 +9,8 @@
         "test_driver.C": "cpp",
         "system_defs.C": "cpp",
         "new_error.C": "cpp",
-        "list": "cpp"
+        "list": "cpp",
+        "*.tcc": "cpp"
     },
     "C_Cpp.errorSquiggles": "disabled"
 }

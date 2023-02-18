@@ -46,23 +46,27 @@ PageId BufMgr::findPage(PageId pageId) {
   return INVALID_PAGE;
 }
 
-int BufMgr::findReplacePos() {
-  int replacePos = INVALID_PAGE;
-  if(!hated.empty()){
-    replacePos = hated.back();
-    hated.pop_back();
-  }
-  else if(!loved.empty()){
-    for(auto page = loved.begin(); page!=loved.end(); ++page) {
-      if(bufDesc[*page].pin_count == 0){
-        loved.erase(page);
-        replacePos = *page;
-        break;
+PageId BufMgr::findFirstPageByStatus(int status) {
+  int time;
+  PageId page = INVALID_PAGE;
+
+  for (int i=0; i<bufferSize; i++) {
+    if (bufDesc[i].page_number != INVALID_PAGE && bufDesc[i].status == status && (status == HATED || bufDesc[i].pin_count == 0)) {
+      if (page == INVALID_PAGE || (status == HATED && time < bufDesc[i].timestamp) || (status == LOVED && time > bufDesc[i].timestamp)) {
+        page = i;
+        time = bufDesc[i].timestamp;
       }
     }
   }
 
-  return replacePos;
+  return page;
+}
+
+int BufMgr::findReplacePos() {
+  int firstHated = findFirstPageByStatus(HATED);
+  int firstLoved = findFirstPageByStatus(LOVED);
+
+  return firstHated != INVALID_PAGE ? firstHated : firstLoved;
 }
 
 Status BufMgr::pinPage(PageId PageId_in_a_DB, Page*& page, int emptyPage) {
@@ -173,10 +177,12 @@ Status BufMgr::unpinPage(PageId page_num, int dirty=FALSE, int hate = FALSE) {
   }
   if(bufDesc[pageIndex].pin_count==1) {
     if(hate){
-      hated.push_back(pageIndex);
+      bufDesc[pageIndex].status = HATED;
+      bufDesc[pageIndex].timestamp = ++globalTime;
     }
     else{
-      loved.push_back(pageIndex);
+      bufDesc[pageIndex].status = LOVED;
+      bufDesc[pageIndex].timestamp = ++globalTime;
     }
   }
   bufDesc[pageIndex].pin_count--;
@@ -196,8 +202,9 @@ Status BufMgr::freePage(PageId globalPageId){
     bufDesc[pagePos].dirtybit = false;
     bufDesc[pagePos].page_number = INVALID_PAGE;
     bufDesc[pagePos].pin_count = 0;
+    bufDesc[pagePos].status = UKNOWN;
 
-    status = removeFromCandidate(pagePos);
+    // status = removeFromCandidate(pagePos);
     if (status!=OK) {
       return status;
     }
@@ -221,20 +228,3 @@ Status BufMgr::flushAllPages(){
   return OK;
 }
 
-Status BufMgr::removeFromCandidate(int pagePos) {
-  for(auto page = loved.begin();page!=loved.end();++page){
-    if(*page==pagePos){
-      loved.erase(page);
-      return OK;
-    }
-  }
-
-  for(auto page = hated.begin();page!=hated.end();++page){
-    if(*page==pagePos){
-      hated.erase(page);
-      return OK;
-    }
-  }
-
-  return MINIBASE_FIRST_ERROR(BUFMGR, CANDIDATE_REMOVAL_ERROR);
-}

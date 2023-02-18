@@ -16,12 +16,20 @@
 #define HTSIZE 7
 // Hash Table size
 
+#define UKNOWN 0
+
+#define LOVED 1
+
+#define HATED 2
 
 class Descriptor {
 public:
     PageId page_number = INVALID_PAGE;
     int pin_count = 0;
     bool dirtybit = false;
+    int status = UKNOWN; // 0 uknown, 1 loved, 2 hated
+    int timestamp = 0;
+    
 };
 
 
@@ -43,11 +51,8 @@ class BufMgr {
 private: // fill in this area
     Descriptor* bufDesc;
     int bufferSize;
+    int globalTime = 0;
     
-    list<PageId> frameIndexer;
-    list<int> loved;
-    list<int> hated;
-
 public:
 
     Page* bufPool; // The actual buffer pool
@@ -63,6 +68,8 @@ public:
     PageId findEmptyPos();
 
     PageId findPage(PageId pageId);
+
+    PageId findFirstPageByStatus(int status);
 
     int findReplacePos();
 
@@ -103,7 +110,7 @@ public:
       return unpinPage(globalPageId_in_a_DB, dirty, FALSE);
     }
 
-    Status removeFromCandidate(int pagePos);
+    // Status removeFromCandidate(int pagePos);
 };
 
 #endif
